@@ -1,0 +1,12 @@
+---
+acmesh:
+  version: 2.8.5
+  user: acme
+  group: acme
+  home: /opt/acme
+  secrets: []
+  certificates:
+    - prim_domain: example.com
+      dns_service: dns_inwx
+
+# vim: ts=4 expandtab
