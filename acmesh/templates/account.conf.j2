@@ -1,0 +1,14 @@
+
+
+#LOG_FILE="/opt/acme/.acme.sh/acme.sh.log"
+#LOG_LEVEL=1
+
+#AUTO_UPGRADE="1"
+
+#NO_TIMESTAMP=1
+
+{% for item in acmesh.secrets %}
+{{ item.option }}='{{ item.secret }}'
+{% endfor %}
+
+USER_PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'

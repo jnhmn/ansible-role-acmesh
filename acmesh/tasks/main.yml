@@ -1,0 +1,90 @@
+---
+- name: Install oathtool
+  package:
+    name: oathtool
+    state: present
+
+- name: "Create acmesh group: {{ acmesh.group }}"
+  group:
+    name: "{{ acmesh.group }}"
+    system: yes
+
+- name: "Create acmesh user: {{ acmesh.user }}"
+  user:
+    name: "{{ acmesh.user }}"
+    system: yes
+    group: "{{ acmesh.group }}"
+    shell: /bin/false
+    home: "{{ acmesh.home }}"
+
+- name: Create acmesh homedir
+  file:
+    path: "{{ acmesh.home }}"
+    state: directory
+    owner: "{{ acmesh.user }}"
+    group: "{{ acmesh.group }}"
+    mode: 0750
+
+- name: Download acmesh
+  unarchive:
+    remote_src: yes
+    src: "https://github.com/acmesh-official/acme.sh/archive/{{ acmesh.version }}.tar.gz"
+    dest: "{{ acmesh.home }}"
+    owner: "{{ acmesh.user }}"
+    group: "{{ acmesh.group }}"
+    extra_opts:
+      - "--strip-components=1"
+  register: install_acme
+
+- name: Install acmesh
+  when: install_acme.changed
+  become: yes
+  become_user: "{{ acmesh.user }}"
+  shell:
+    chdir: "{{ acmesh.home }}"
+    cmd: "{{ acmesh.home }}/acme.sh --install --nocron"
+
+- name: Install acmesh accounts config
+  template:
+    src: account.conf.j2
+    dest: "{{ acmesh.home }}/.acme.sh/account.conf"
+    owner: "{{ acmesh.user }}"
+    group: "{{ acmesh.group }}"
+    mode: 0600
+
+- name: Fetch certificates
+  become: yes
+  become_user: "{{ acmesh.user }}"
+  shell:
+    chdir: "{{ acmesh.home }}"
+    cmd: "{{ acmesh.home }}/acme.sh --issue -d {{ item.prim_domain }} --dns {{ item.dns_service }}"
+    creates: "{{ acmesh.home }}/.acme.sh/{{ item.prim_domain }}/{{ item.prim_domain }}.cer"
+  with_items: "{{ acmesh.certificates }}"
+  register: fetch_certificates
+
+
+- name: Create certificate folder
+  file:
+    path: /etc/ssl/live
+    state: directory
+    owner: root
+    group: ssl-cert
+    mode: 0770
+
+- name: Create install_certs script
+  template:
+    src: install_certs.sh.j2
+    dest: /opt/install_certs.sh
+    mode: 0700
+
+- name: Install certs
+  shell:
+    cmd: "/opt/install_certs.sh"
+  when: fetch_certificates.changed
+
+- name: Install cronjob
+  template:
+    src: acme.cron.j2
+    dest: /etc/cron.d/acme
+    mode: 0644
+# vim: expandtab

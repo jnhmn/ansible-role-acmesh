@@ -1,0 +1,9 @@
+#!/bin/sh
+{% if acmesh.certificates is defined %}
+{% for item in acmesh.certificates %}
+rsync -rv {{ acmesh.home }}/.acme.sh/{{ item.prim_domain }} /etc/ssl/live/
+{% endfor %}
+{% endif %}
+chmod -R o-rwx /etc/ssl/live/*
+chgrp ssl-cert /etc/ssl/live/*
+apachectl graceful
